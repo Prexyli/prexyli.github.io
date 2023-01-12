@@ -139,7 +139,7 @@ void main()
 	// Warping with FBM
 	vec3 q, r;
 	float vh;
-	if(fbmfunc){
+	if(!fbmfunc){
 		q = vec3(fbmH(X * qMult, 0.03) , 2.0*fbmH(X * qMult, 0.0), 2.0*fbmH(X * qMult,0.0));
 		r = vec3(fbmH(X * rMult + q, 0.05), fbmH(X*rMult + q, 0.0), fbmH(X*rMult + q, 0.0));
 		vh = fbmH(X * vMult * r, 0.0);
