@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "gpucomputationrender-three": "^2.0.0",
+    "three": "^0.148.0"
+  },
+  "devDependencies": {
+    "dat.gui": "^0.7.9"
+  }
+}
