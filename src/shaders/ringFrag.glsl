@@ -1,6 +1,5 @@
 precision highp float;
 uniform float time;
-uniform mat4 modelViewMatrix;
 uniform vec3 color1;
 uniform vec3 color2;
 uniform float ringValue;
@@ -108,8 +107,6 @@ void main()
 {
 	vec3 pos = texcoord;
 	float distCenter = sqrt(pow(texcoord.x,2.0) + pow(texcoord.y,2.0) + pow(texcoord.z,2.0));
-	//float rescaledValue = ((distCenter - 0.0) / (2.5 - 0.0)) * (2.5 - 1.5) + 1.5;
-	//float rerescaledValue = ((distCenter - 1.5) / (2.5 - 1.5)) * (1.0 - 0.0) + 0.0;
 	float opacity = fbmH(vec3(distCenter)*ringValue,0.0);
 	vec3 color = mix(color1, color2, opacity);
 	

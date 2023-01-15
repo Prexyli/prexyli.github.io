@@ -3,6 +3,7 @@ import { OrbitControls } from './utils/OrbitControls.js';
 import { color, GUI } from './utils/dat.gui.module.js';
 import Stats from './utils/stats.module.js'
 
+//Three.js shaders
 let planetVertexShader,
     planetFragmentShader,
     atmoVertexShader,
@@ -10,16 +11,19 @@ let planetVertexShader,
     ringVertexShader,
     ringFragmentShader;
 
+//Three.js meshes
+let ringMesh, atmosphere;
 
+//Loaders
 const fileloader = new THREE.FileLoader();
 const textureLoader = new THREE.TextureLoader();
-
-
 
 var controls;
 var camera, scene, renderer;
 const skyboxImage = 'space';
 var planetMaterial, atmosphereMaterial, ringMaterial;
+
+//Adding the stats component
 const stats = Stats();
 document.body.appendChild(stats.dom)
 
@@ -32,6 +36,7 @@ var guiControls = new (function () {
     this.color3 = "#89AA5F";
     this.color4 = "#A35133";
     this.color5 = "#14B0B0";
+    this.atmosphereColor = "#14B0B0";
     this.autorotate = false;
     this.speed = 0.01;
     this.ring = 3.2;
@@ -43,6 +48,8 @@ var guiControls = new (function () {
     this.vMult = 3.5;
     this.amplitude = 0.5;
     this.fbmfunc = true;
+    this.ringshow = true;
+    this.atmosphereshow = false;
 })
 
 function loadShaders() {
@@ -108,6 +115,7 @@ function loadShaders() {
 }
 
 // SKYBOX MATERIAL LOADER
+// Code for skybox was inspired by https://codinhood.com/post/create-skybox-with-threejs
 function createMaterialArray(filename) {
     const skyboxImagepaths = createPathStrings(filename);
     const materialArray = skyboxImagepaths.map(image => {
@@ -129,6 +137,7 @@ function createPathStrings(filename) {
     
     return pathStings;
 }
+//
 
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -146,7 +155,7 @@ function intialize(){
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
     camera.position.z = 5;
 
-
+    //Orbit Controls
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enabled = true;
     controls.minDistance = 2;
@@ -154,6 +163,7 @@ function intialize(){
     controls.autoRotate = false;
     controls.autoRotateSpeed = 1.0;
 
+    //GUI definitions
     const gui = new GUI({ width: 350 });
     var planetFolder = gui.addFolder("Planet Control");
     planetFolder.add(guiControls, "qMult", 0.0, 10.0);
@@ -167,18 +177,19 @@ function intialize(){
     folder.addColor(guiControls, 'color3');
     folder.addColor(guiControls, 'color4');
     folder.addColor(guiControls, 'color5');
+    folder.addColor(guiControls, 'atmosphereColor');
     var ringFolder = gui.addFolder("Rings");
     ringFolder.add(guiControls, "ring", 1.0, 6.0);
     ringFolder.addColor(guiControls, 'ringColor1');
     ringFolder.addColor(guiControls, 'ringColor2');
     ringFolder.add(guiControls,"ringback");
+    gui.add(guiControls, "ringshow");
+    gui.add(guiControls, "atmosphereshow");
     gui.add(guiControls, "autorotate");
     gui.add(guiControls, "speed", 0.001, 1.1);
     
     //Adding a Sphere
     const geometry = new THREE.SphereGeometry(1, 100, 100);
-    //const geometry = new THREE.BoxGeometry(1,1,1);
-    //const planetMaterial = new THREE.MeshPhongMaterial( { color: 0x00AA00 } );
     planetMaterial = new THREE.RawShaderMaterial({
         uniforms: {
             time: {value: 1.0},
@@ -196,11 +207,10 @@ function intialize(){
          vertexShader: planetVertexShader,
          fragmentShader: planetFragmentShader,
     });
-    const sphere = new THREE.Mesh( geometry, planetMaterial );
-    scene.add( sphere );
+    const planet = new THREE.Mesh( geometry, planetMaterial );
+    scene.add( planet );
 
     //Sun
-
     const sungeo = new THREE.SphereGeometry(1, 10, 10);
     const sunMaterial = new THREE.MeshStandardMaterial({
         color: 0xFFFFFF,
@@ -212,15 +222,12 @@ function intialize(){
     sun.position.z = 100;
     scene.add( sun );
 
-    //AtmoSphere
+    //Atmosphere
     console.log(sun.position);
     const atmosphereGeometry = new THREE.SphereGeometry(1.1, 100, 100);
     atmosphereMaterial = new THREE.RawShaderMaterial({
         uniforms: {
-            atmosphereRadius: 1.1, // The radius of the atmosphere
-            planetCenter : sphere.position,// The center of the planet
-            sunPos : {value : new THREE.Vector3(sun.position)},
-            atmoColor: { value: new THREE.Color(guiControls.color5)} 
+            atmoColor: { value: new THREE.Color(guiControls.atmosphereColor)} 
         },
          vertexShader: atmoVertexShader,
          fragmentShader: atmoFragmentShader,
@@ -229,7 +236,7 @@ function intialize(){
          side: THREE.BackSide,
          depthWrite: false
     });
-    const atmosphere = new THREE.Mesh( atmosphereGeometry, atmosphereMaterial );
+    atmosphere = new THREE.Mesh( atmosphereGeometry, atmosphereMaterial );
     scene.add( atmosphere );
 
     //Ring
@@ -247,7 +254,7 @@ function intialize(){
         side: THREE.DoubleSide,
         transparent: true,
     });
-    const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+    ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
     ringMesh.lookAt( new THREE.Vector3(1.0,1.0,1.0));
     scene.add( ringMesh);
 
@@ -263,7 +270,17 @@ function intialize(){
 
 function animate() {
     const planetGeometry = scene.children[0];
-    //planetGeometry.rotation.y += 0.01;
+
+    updateGuiControls();
+
+    controls.update();
+    requestAnimationFrame( animate );
+    renderer.render(scene, camera);
+    stats.update();
+}
+
+//GUI controls that will be updateded every frame
+function updateGuiControls(){
     planetMaterial.uniforms.time.value += guiControls.speed;
     ringMaterial.uniforms.time.value += guiControls.speed;
     controls.autoRotate = guiControls.autorotate;
@@ -277,13 +294,11 @@ function animate() {
     planetMaterial.uniforms.color3 = { value: new THREE.Color(guiControls.color3)};
     planetMaterial.uniforms.color4 = { value: new THREE.Color(guiControls.color4)};
     planetMaterial.uniforms.color5 = { value: new THREE.Color(guiControls.color5)};
-    atmosphereMaterial.uniforms.atmoColor = { value: new THREE.Color(guiControls.color5)};
+    atmosphereMaterial.uniforms.atmoColor = { value: new THREE.Color(guiControls.atmosphereColor)};
     ringMaterial.uniforms.color1 = { value: new THREE.Color(guiControls.ringColor1)};
     ringMaterial.uniforms.color2 = { value: new THREE.Color(guiControls.ringColor2)};
     ringMaterial.uniforms.ringValue = { value: guiControls.ring}
     ringMaterial.side = guiControls.ringback ? THREE.DoubleSide : THREE.FrontSide;
-    controls.update();
-    requestAnimationFrame( animate );
-    renderer.render(scene, camera);
-    stats.update();
+    ringMesh.visible = guiControls.ringshow;
+    atmosphere.visible = guiControls.atmosphereshow;
 }

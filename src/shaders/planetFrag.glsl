@@ -131,11 +131,6 @@ void main()
 {
 	//Rescale the texcoords
 	vec3 X = (texcoord + 2.0) / 4.0; 
-	float distCenter = sqrt(pow(texcoord.y,2.0));
-	float opacity = fbmH(vec3(distCenter),0.0);
-	opacity *= 10.0;
-	float intpart = floor(opacity);
-	opacity = intpart / 10.0;
 	// Warping with FBM
 	vec3 q, r;
 	float vh;
@@ -145,11 +140,19 @@ void main()
 		vh = fbmH(X * vMult * r, 0.0);
 	}
 	else {
-		q = vec3(fbm2(X * qMult, 0.03) , 2.0*fbm2(X * qMult, 0.0), 2.0*fbm2(X * qMult,0.0));
-		r = vec3(fbmH(X * rMult + q, 0.05), fbmH(X*rMult + q, 0.0), fbmH(X*rMult + q, 0.0));
+		q = vec3( fbm2(X * qMult, 0.03) , 
+					2.0 * fbm2(X * qMult, 0.0), 
+					2.0 * fbm2(X * qMult,0.0));
+
+		r = vec3( fbmH(X * rMult + q, 0.05),
+				  fbmH(X * rMult + q, 0.0), 
+				  fbmH(X * rMult + q, 0.0));
+
 		vh = fbm2(X * vMult * r, 0.0);
 	}
+
 	vec3 color;
+	//Uniforms colors that will be mixed
 	vec3 col1 = color1;
 	vec3 col2 = color2;
 	
@@ -157,18 +160,17 @@ void main()
     vec3 col4 = color4;
     vec3 col5 = color5;
 
-	vec3 col_mix = mix(col3, col4, clamp(r, 0.0, 1.0));
-    col_mix = mix(col_mix, col5, clamp(q, 0.0, 1.0));
+	vec3 col_mix = mix(col3, col4, clamp(q, 0.0, 1.0));
+    col_mix = mix(col_mix, col5, clamp(r, 0.0, 1.0));
 
 	float pos = vh * 2.0 - 1.0;
 	color = mix(col_mix, col1, clamp(pos, 0.0, 1.0));
 	color = mix(color, col2, clamp(-pos, 0.0, 1.0));
 
-	color = (clamp((0.4 * pow(vh,3.) + pow(vh,2.) + 0.5*vh), 0.0, 1.0) * 0.9 + 0.1) * color;
+	color = (clamp((0.5 * pow(vh,2.5) + pow(vh,1.9) + 0.5*vh), 0.0, 1.0) * 0.8 + 0.15) * color;
 
 	//Lighting
 	vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0)-vec3(0.0));
-	
 	float ambient = 0.0;
 	float diffuse = mix( max(0.0, dot( lightDir, newnormal)), 1.0, ambient);
 
